@@ -610,6 +610,17 @@ module ActiveResource
         end
       end
 
+      def default_params
+         Thread.current["active.resource.default_params.#{self.object_id}"] ||= {}
+
+        if superclass != Object && superclass.default_params
+          Thread.current["active.resource.default_params.#{self.object_id}"] = superclass.default_params.merge(Thread.current["active.resource.default_params.#{self.object_id}"])
+        else
+          Thread.current["active.resource.default_params.#{self.object_id}"]
+        end
+
+      end
+
       attr_writer :element_name
 
       def element_name
@@ -920,7 +931,7 @@ module ActiveResource
       #   # Let's assume a request to events/5/cancel.json
       #   Event.delete(params[:id]) # sends DELETE /events/5
       def delete(id, options = {})
-        connection.delete(element_path(id, options), headers)
+        connection.delete(element_path(id, options), headers, default_params)
       end
 
       # Asserts the existence of a resource, returning <tt>true</tt> if the resource is found.
@@ -934,7 +945,7 @@ module ActiveResource
         if id
           prefix_options, query_options = split_options(options[:params])
           path = element_path(id, prefix_options, query_options)
-          response = connection.head(path, headers)
+          response = connection.head(path, headers, default_params)
           response.code.to_i == 200
         end
         # id && !find_single(id, options).nil?
@@ -959,11 +970,11 @@ module ActiveResource
               instantiate_collection(get(from, options[:params]), options[:params])
             when String
               path = "#{from}#{query_string(options[:params])}"
-              instantiate_collection(format.decode(connection.get(path, headers).body) || [], options[:params])
+              instantiate_collection(format.decode(connection.get(path, headers, default_params).body) || [], options[:params])
             else
               prefix_options, query_options = split_options(options[:params])
               path = collection_path(prefix_options, query_options)
-              instantiate_collection( (format.decode(connection.get(path, headers).body) || []), query_options, prefix_options )
+              instantiate_collection( (format.decode(connection.get(path, headers, default_params).body) || []), query_options, prefix_options )
             end
           rescue ActiveResource::ResourceNotFound
             # Swallowing ResourceNotFound exceptions and return nil - as per
@@ -979,7 +990,7 @@ module ActiveResource
             instantiate_record(get(from, options[:params]))
           when String
             path = "#{from}#{query_string(options[:params])}"
-            instantiate_record(format.decode(connection.get(path, headers).body))
+            instantiate_record(format.decode(connection.get(path, headers, default_params).body))
           end
         end
 
@@ -987,7 +998,7 @@ module ActiveResource
         def find_single(scope, options)
           prefix_options, query_options = split_options(options[:params])
           path = element_path(scope, prefix_options, query_options)
-          instantiate_record(format.decode(connection.get(path, headers).body), prefix_options)
+          instantiate_record(format.decode(connection.get(path, headers, default_params).body), prefix_options)
         end
 
         def instantiate_collection(collection, original_params = {}, prefix_options = {})
@@ -1259,7 +1270,7 @@ module ActiveResource
     #   Person.find(new_id) # 404 (Resource Not Found)
     def destroy
       run_callbacks :destroy do
-        connection.delete(element_path, self.class.headers)
+        connection.delete(element_path, self.class.headers, self.class.default_params)
       end
     end
 

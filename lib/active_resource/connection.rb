@@ -78,13 +78,15 @@ module ActiveResource
 
     # Executes a GET request.
     # Used to get (find) resources.
-    def get(path, headers = {})
+    def get(path, headers = {}, default_params = {})
+      path = add_default_params(path, default_params)
       with_auth { request(:get, path, build_request_headers(headers, :get, self.site.merge(path))) }
     end
 
     # Executes a DELETE request (see HTTP protocol documentation if unfamiliar).
     # Used to delete resources.
-    def delete(path, headers = {})
+    def delete(path, headers = {}, default_params = {})
+      path = add_default_params(path, default_params)
       with_auth { request(:delete, path, build_request_headers(headers, :delete, self.site.merge(path))) }
     end
 
@@ -108,7 +110,8 @@ module ActiveResource
 
     # Executes a HEAD request.
     # Used to obtain meta-information about resources, such as whether they exist and their size (via response headers).
-    def head(path, headers = {})
+    def head(path, headers = {}, default_params = {})
+      path = add_default_params(path, default_params)
       with_auth { request(:head, path, build_request_headers(headers, :head, self.site.merge(path))) }
     end
 
@@ -280,6 +283,16 @@ module ActiveResource
         return :basic if auth_type.nil?
         auth_type = auth_type.to_sym
         auth_type.in?([:basic, :digest]) ? auth_type : :basic
+      end
+
+      def add_default_params(path, default_params = {})
+        uri = URI(path)
+        params = URI.decode_www_form(uri.query || "")
+        default_params.to_a.each do |def_par|
+          params << def_par
+        end
+        uri.query = URI.encode_www_form(params)
+        uri.to_s
       end
   end
 end
