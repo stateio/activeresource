@@ -120,6 +120,7 @@ module ActiveResource
       def request(method, path, *arguments)
         result = ActiveSupport::Notifications.instrument("request.active_resource") do |payload|
           payload[:method]      = method
+          payload[:arguments]   = arguments
           payload[:request_uri] = "#{site.scheme}://#{site.host}:#{site.port}#{path}"
           payload[:result]      = http.send(method, path, *arguments)
         end
