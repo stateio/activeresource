@@ -1362,7 +1362,11 @@ module ActiveResource
               end
             when Hash
               resource = find_or_create_resource_for(key)
-              resource.new(value, persisted)
+              resource.new(value, persisted).tap do |r|
+                if r.respond_to?(:_assoc_key)
+                  r._assoc_key = key
+                end
+              end
             else
               value.duplicable? ? value.dup : value
           end
